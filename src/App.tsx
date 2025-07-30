@@ -1,13 +1,35 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import './App.css'
 import StudentImport from './components/StudentImport'
 import MatchRecorder from './components/MatchRecorder'
 import MatchResults from './components/MatchResults'
 import MatchFlowChart from './components/MatchFlowChart'
+import { getTournamentStatus } from './services/firebaseService'
+import type { Student } from './types'
 
 function App() {
   const [activeTab, setActiveTab] = useState<'import' | 'record' | 'results' | 'flowchart'>('import')
   const [refreshKey, setRefreshKey] = useState(0)
+  const [tournamentStatus, setTournamentStatus] = useState<{
+    totalStudents: number;
+    activeStudents: number;
+    eliminatedStudents: number;
+    winner: Student | null;
+    isComplete: boolean;
+  } | null>(null)
+
+  useEffect(() => {
+    loadTournamentStatus()
+  }, [refreshKey])
+
+  const loadTournamentStatus = async () => {
+    try {
+      const status = await getTournamentStatus()
+      setTournamentStatus(status)
+    } catch (error) {
+      console.error('Error loading tournament status:', error)
+    }
+  }
 
   const handleImportComplete = () => {
     setRefreshKey(prev => prev + 1)
@@ -78,6 +100,48 @@ function App() {
             </button>
           </nav>
         </header>
+
+        {/* Tournament Status Banner */}
+        {tournamentStatus && tournamentStatus.totalStudents > 0 && (
+          <div className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-2xl shadow-lg animate-fadeIn ${
+            tournamentStatus.isComplete && tournamentStatus.winner
+              ? 'bg-gradient-to-r from-yellow-100 to-orange-100 border-2 border-yellow-300'
+              : tournamentStatus.activeStudents <= 2 && tournamentStatus.totalStudents > 2
+              ? 'bg-gradient-to-r from-orange-100 to-red-100 border-2 border-orange-300'
+              : 'bg-gradient-to-r from-blue-100 to-indigo-100 border-2 border-blue-300'
+          }`}>
+            <div className="text-center">
+              {tournamentStatus.isComplete && tournamentStatus.winner ? (
+                <div>
+                  <div className="text-2xl sm:text-3xl mb-2">🏆👑</div>
+                  <div className="text-lg sm:text-xl font-bold text-yellow-800 mb-1">
+                    Tournament Complete!
+                  </div>
+                  <div className="text-base sm:text-lg font-semibold text-yellow-700">
+                    🎉 <span className="text-yellow-900">{tournamentStatus.winner.name}</span> is the Champion! 🎉
+                  </div>
+                </div>
+              ) : tournamentStatus.activeStudents <= 2 && tournamentStatus.totalStudents > 2 ? (
+                <div>
+                  <div className="text-xl sm:text-2xl mb-2">🔥</div>
+                  <div className="text-base sm:text-lg font-bold text-orange-800 mb-1">
+                    Final Showdown!
+                  </div>
+                  <div className="text-sm sm:text-base text-orange-700">
+                    Only {tournamentStatus.activeStudents} student{tournamentStatus.activeStudents === 1 ? ' remains' : 's remain'} • {tournamentStatus.eliminatedStudents} eliminated
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="text-lg sm:text-xl mb-2">⚔️</div>
+                  <div className="text-sm sm:text-base font-semibold text-blue-800">
+                    Tournament in Progress: {tournamentStatus.activeStudents} active • {tournamentStatus.eliminatedStudents} eliminated
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <main className="animate-fadeIn">
           {activeTab === 'import' && (

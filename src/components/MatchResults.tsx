@@ -143,9 +143,15 @@ const MatchResults: React.FC = () => {
                       {matches.length - index}
                     </div>
                     <div className="text-base sm:text-lg font-bold text-gray-800">
-                      <span className="text-blue-600">{match.player1Name}</span>
+                      <span className={`${match.winner === match.player1Name ? 'text-blue-600' : match.winner === match.player2Name ? 'text-gray-500 line-through' : 'text-blue-600'}`}>
+                        {match.player1Name}
+                        {match.winner === match.player2Name && ' ❌'}
+                      </span>
                       <span className="mx-1 text-gray-400">vs</span>
-                      <span className="text-red-600">{match.player2Name}</span>
+                      <span className={`${match.winner === match.player2Name ? 'text-red-600' : match.winner === match.player1Name ? 'text-gray-500 line-through' : 'text-red-600'}`}>
+                        {match.player2Name}
+                        {match.winner === match.player1Name && ' ❌'}
+                      </span>
                     </div>
                   </div>
                   
@@ -179,10 +185,31 @@ const MatchResults: React.FC = () => {
                 {/* Match Details */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 items-center">
                   {/* Player 1 Choice */}
-                  <div className="flex flex-col items-center p-3 bg-blue-50 rounded-xl border-2 border-blue-100">
-                    <div className="text-xs font-semibold text-blue-700 mb-1">{match.player1Name}</div>
+                  <div className={`flex flex-col items-center p-3 rounded-xl border-2 ${
+                    match.winner === match.player1Name 
+                      ? 'bg-green-50 border-green-200' 
+                      : match.winner === match.player2Name 
+                      ? 'bg-red-50 border-red-200' 
+                      : 'bg-blue-50 border-blue-100'
+                  }`}>
+                    <div className={`text-xs font-semibold mb-1 ${
+                      match.winner === match.player1Name 
+                        ? 'text-green-700' 
+                        : match.winner === match.player2Name 
+                        ? 'text-red-700' 
+                        : 'text-blue-700'
+                    }`}>
+                      {match.player1Name}
+                      {match.winner === match.player2Name && ' (Eliminated)'}
+                    </div>
                     <div className="text-2xl mb-1">{choiceEmojis[match.player1Choice]}</div>
-                    <div className="font-bold capitalize text-blue-800 bg-blue-200 px-2 py-1 rounded-full text-xs">
+                    <div className={`font-bold capitalize px-2 py-1 rounded-full text-xs ${
+                      match.winner === match.player1Name 
+                        ? 'text-green-800 bg-green-200' 
+                        : match.winner === match.player2Name 
+                        ? 'text-red-800 bg-red-200' 
+                        : 'text-blue-800 bg-blue-200'
+                    }`}>
                       {match.player1Choice}
                     </div>
                   </div>
@@ -196,10 +223,31 @@ const MatchResults: React.FC = () => {
                   </div>
                   
                   {/* Player 2 Choice */}
-                  <div className="flex flex-col items-center p-3 bg-red-50 rounded-xl border-2 border-red-100">
-                    <div className="text-xs font-semibold text-red-700 mb-1">{match.player2Name}</div>
+                  <div className={`flex flex-col items-center p-3 rounded-xl border-2 ${
+                    match.winner === match.player2Name 
+                      ? 'bg-green-50 border-green-200' 
+                      : match.winner === match.player1Name 
+                      ? 'bg-red-50 border-red-200' 
+                      : 'bg-red-50 border-red-100'
+                  }`}>
+                    <div className={`text-xs font-semibold mb-1 ${
+                      match.winner === match.player2Name 
+                        ? 'text-green-700' 
+                        : match.winner === match.player1Name 
+                        ? 'text-red-700' 
+                        : 'text-red-700'
+                    }`}>
+                      {match.player2Name}
+                      {match.winner === match.player1Name && ' (Eliminated)'}
+                    </div>
                     <div className="text-2xl mb-1">{choiceEmojis[match.player2Choice]}</div>
-                    <div className="font-bold capitalize text-red-800 bg-red-200 px-2 py-1 rounded-full text-xs">
+                    <div className={`font-bold capitalize px-2 py-1 rounded-full text-xs ${
+                      match.winner === match.player2Name 
+                        ? 'text-green-800 bg-green-200' 
+                        : match.winner === match.player1Name 
+                        ? 'text-red-800 bg-red-200' 
+                        : 'text-red-800 bg-red-200'
+                    }`}>
                       {match.player2Choice}
                     </div>
                   </div>

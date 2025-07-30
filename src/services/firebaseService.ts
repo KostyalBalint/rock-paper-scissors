@@ -4,6 +4,7 @@ import {
   getDocs, 
   deleteDoc,
   doc,
+  updateDoc,
   query, 
   orderBy, 
   where,
@@ -22,7 +23,8 @@ export const matchesCollection = collection(db, 'matches');
 export const addStudent = async (name: string): Promise<string> => {
   const docRef = await addDoc(studentsCollection, {
     name,
-    createdAt: Timestamp.now()
+    createdAt: Timestamp.now(),
+    eliminated: false
   });
   return docRef.id;
 };
@@ -38,7 +40,9 @@ export const getStudents = async (): Promise<Student[]> => {
   return querySnapshot.docs.map((doc: QueryDocumentSnapshot<DocumentData>) => ({
     id: doc.id,
     name: doc.data().name,
-    createdAt: doc.data().createdAt.toDate()
+    createdAt: doc.data().createdAt.toDate(),
+    eliminated: doc.data().eliminated || false,
+    eliminatedAt: doc.data().eliminatedAt ? doc.data().eliminatedAt.toDate() : undefined
   }));
 };
 
@@ -47,6 +51,52 @@ export const searchStudents = async (searchTerm: string): Promise<Student[]> => 
   return students.filter(student => 
     student.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+};
+
+export const getActiveStudents = async (): Promise<Student[]> => {
+  const students = await getStudents();
+  return students.filter(student => !student.eliminated);
+};
+
+export const searchActiveStudents = async (searchTerm: string): Promise<Student[]> => {
+  const activeStudents = await getActiveStudents();
+  return activeStudents.filter(student => 
+    student.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+};
+
+export const eliminateStudent = async (studentId: string): Promise<void> => {
+  const studentDoc = doc(studentsCollection, studentId);
+  await updateDoc(studentDoc, {
+    eliminated: true,
+    eliminatedAt: Timestamp.now()
+  });
+};
+
+export const getTournamentWinner = async (): Promise<Student | null> => {
+  const activeStudents = await getActiveStudents();
+  return activeStudents.length === 1 ? activeStudents[0] : null;
+};
+
+export const getTournamentStatus = async (): Promise<{
+  totalStudents: number;
+  activeStudents: number;
+  eliminatedStudents: number;
+  winner: Student | null;
+  isComplete: boolean;
+}> => {
+  const allStudents = await getStudents();
+  const activeStudents = allStudents.filter(s => !s.eliminated);
+  const eliminatedStudents = allStudents.filter(s => s.eliminated);
+  const winner = activeStudents.length === 1 ? activeStudents[0] : null;
+  
+  return {
+    totalStudents: allStudents.length,
+    activeStudents: activeStudents.length,
+    eliminatedStudents: eliminatedStudents.length,
+    winner,
+    isComplete: activeStudents.length <= 1 && allStudents.length > 1
+  };
 };
 
 const determineGameResult = (player1Choice: GameChoice, player2Choice: GameChoice): { result: GameResult; winner?: string } => {
@@ -95,6 +145,18 @@ export const addMatch = async (
     throw new Error(`${player1Name} and ${player2Name} have already played against each other.`);
   }
   
+  // Check if either player is already eliminated
+  const students = await getStudents();
+  const player1 = students.find(s => s.id === player1Id);
+  const player2 = students.find(s => s.id === player2Id);
+  
+  if (player1?.eliminated) {
+    throw new Error(`${player1Name} has already been eliminated from the tournament.`);
+  }
+  if (player2?.eliminated) {
+    throw new Error(`${player2Name} has already been eliminated from the tournament.`);
+  }
+  
   const gameResult = determineGameResult(player1Choice, player2Choice);
   
   const docRef = await addDoc(matchesCollection, {
@@ -108,6 +170,15 @@ export const addMatch = async (
     winner: gameResult.winner === 'player1' ? player1Name : gameResult.winner === 'player2' ? player2Name : undefined,
     createdAt: Timestamp.now()
   });
+  
+  // Eliminate the loser (but not in case of a tie)
+  if (gameResult.result !== 'tie') {
+    if (gameResult.winner === 'player1') {
+      await eliminateStudent(player2Id);
+    } else {
+      await eliminateStudent(player1Id);
+    }
+  }
   
   return docRef.id;
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Student } from '../types';
-import { searchStudents, getStudents } from '../services/firebaseService';
+import { searchActiveStudents, getActiveStudents } from '../services/firebaseService';
 
 interface StudentSearchProps {
   onStudentSelect: (student: Student) => void;
@@ -32,8 +32,8 @@ const StudentSearch: React.FC<StudentSearchProps> = ({
   const loadStudents = async () => {
     setIsLoading(true);
     try {
-      const allStudents = await getStudents();
-      setStudents(allStudents);
+      const activeStudents = await getActiveStudents();
+      setStudents(activeStudents);
     } catch (error) {
       console.error('Error loading students:', error);
     } finally {
@@ -51,7 +51,7 @@ const StudentSearch: React.FC<StudentSearchProps> = ({
     }
 
     try {
-      const results = await searchStudents(value);
+      const results = await searchActiveStudents(value);
       setFilteredStudents(results.slice(0, 10));
     } catch (error) {
       console.error('Error searching students:', error);

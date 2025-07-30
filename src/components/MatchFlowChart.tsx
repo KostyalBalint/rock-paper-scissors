@@ -64,6 +64,8 @@ const MatchFlowChart: React.FC = () => {
       const losses = studentMatches.filter(match => match.winner && match.winner !== student.name).length;
       const ties = studentMatches.filter(match => match.result === 'tie').length;
       
+      const isEliminated = student.eliminated;
+      
       // Arrange nodes in a circular pattern
       const angle = (index / studentData.length) * 2 * Math.PI;
       const radius = Math.max(200, studentData.length * 30);
@@ -77,7 +79,12 @@ const MatchFlowChart: React.FC = () => {
         data: {
           label: (
             <div className="text-center">
-              <div className="font-bold text-sm text-gray-800 mb-1">{student.name}</div>
+              <div className={`font-bold text-sm mb-1 ${
+                isEliminated ? 'text-gray-500 line-through' : 'text-gray-800'
+              }`}>
+                {student.name}
+                {isEliminated && ' ❌'}
+              </div>
               <div className="text-xs text-gray-600">
                 <span className="text-green-600">W: {wins}</span>
                 {' • '}
@@ -89,15 +96,33 @@ const MatchFlowChart: React.FC = () => {
                   </>
                 )}
               </div>
+              {isEliminated && (
+                <div className="text-xs text-red-500 font-semibold mt-1">
+                  ELIMINATED
+                </div>
+              )}
             </div>
           ),
         },
         style: {
-          background: wins > losses ? '#dcfce7' : losses > wins ? '#fef2f2' : '#fef3c7',
-          border: wins > losses ? '2px solid #16a34a' : losses > wins ? '2px solid #dc2626' : '2px solid #ca8a04',
+          background: isEliminated 
+            ? '#f3f4f6' 
+            : wins > losses 
+            ? '#dcfce7' 
+            : losses > wins 
+            ? '#fef2f2' 
+            : '#fef3c7',
+          border: isEliminated 
+            ? '2px dashed #9ca3af' 
+            : wins > losses 
+            ? '2px solid #16a34a' 
+            : losses > wins 
+            ? '2px solid #dc2626' 
+            : '2px solid #ca8a04',
           borderRadius: '12px',
           padding: '8px 12px',
           minWidth: '120px',
+          opacity: isEliminated ? 0.6 : 1,
         },
         sourcePosition: Position.Right,
         targetPosition: Position.Left,
@@ -271,6 +296,10 @@ const MatchFlowChart: React.FC = () => {
               <span className="inline-flex items-center gap-1 mx-2">
                 <div className="w-3 h-3 bg-yellow-200 border border-yellow-500 rounded"></div>
                 Equal Record
+              </span>
+              <span className="inline-flex items-center gap-1 mx-2">
+                <div className="w-3 h-3 bg-gray-200 border-2 border-dashed border-gray-400 rounded opacity-60"></div>
+                Eliminated
               </span>
             </div>
           </div>

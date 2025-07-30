@@ -2,6 +2,8 @@ export interface Student {
   id: string;
   name: string;
   createdAt: Date;
+  eliminated: boolean;
+  eliminatedAt?: Date;
 }
 
 export type GameChoice = 'rock' | 'paper' | 'scissors';
