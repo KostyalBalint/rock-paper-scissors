@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import type { Match } from '../types';
-import { getMatches } from '../services/firebaseService';
+import { getMatches, deleteMatch } from '../services/firebaseService';
 
 const MatchResults: React.FC = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [deletingMatchId, setDeletingMatchId] = useState<string | null>(null);
+  const [matchToDelete, setMatchToDelete] = useState<Match | null>(null);
 
   useEffect(() => {
     loadMatches();
@@ -47,6 +49,30 @@ const MatchResults: React.FC = () => {
     rock: '🪨',
     paper: '📄', 
     scissors: '✂️'
+  };
+
+  const handleDeleteClick = (match: Match) => {
+    setMatchToDelete(match);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!matchToDelete) return;
+    
+    setDeletingMatchId(matchToDelete.id);
+    try {
+      await deleteMatch(matchToDelete.id);
+      // Remove the match from local state
+      setMatches(prev => prev.filter(m => m.id !== matchToDelete.id));
+      setMatchToDelete(null);
+    } catch (err) {
+      setError('Error deleting match: ' + (err as Error).message);
+    } finally {
+      setDeletingMatchId(null);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setMatchToDelete(null);
   };
 
   if (isLoading) {
@@ -123,13 +149,30 @@ const MatchResults: React.FC = () => {
                     </div>
                   </div>
                   
-                  <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm sm:text-base ${
-                    match.result === 'tie' 
-                      ? 'bg-yellow-100 text-yellow-700 border-2 border-yellow-200' 
-                      : 'bg-green-100 text-green-700 border-2 border-green-200'
-                  }`}>
-                    <span className="text-lg">{getResultEmoji(match)}</span>
-                    {getResultText(match)}
+                  <div className="flex items-center gap-3">
+                    <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-bold text-sm sm:text-base ${
+                      match.result === 'tie' 
+                        ? 'bg-yellow-100 text-yellow-700 border-2 border-yellow-200' 
+                        : 'bg-green-100 text-green-700 border-2 border-green-200'
+                    }`}>
+                      <span className="text-lg">{getResultEmoji(match)}</span>
+                      {getResultText(match)}
+                    </div>
+                    
+                    <button
+                      onClick={() => handleDeleteClick(match)}
+                      disabled={deletingMatchId === match.id}
+                      className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Delete match"
+                    >
+                      {deletingMatchId === match.id ? (
+                        <div className="w-5 h-5 border-2 border-red-300 border-t-red-500 rounded-full animate-spin"></div>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
                 </div>
                 
@@ -163,6 +206,49 @@ const MatchResults: React.FC = () => {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        
+        {/* Confirmation Dialog */}
+        {matchToDelete && (
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fadeIn">
+              <div className="text-center mb-6">
+                <div className="text-4xl mb-3">🗑️</div>
+                <h3 className="text-xl font-bold text-gray-800 mb-2">Delete Match?</h3>
+                <p className="text-gray-600">
+                  Are you sure you want to delete the match between{' '}
+                  <span className="font-semibold text-blue-600">{matchToDelete.player1Name}</span> and{' '}
+                  <span className="font-semibold text-red-600">{matchToDelete.player2Name}</span>?
+                </p>
+                <p className="text-sm text-gray-500 mt-2">This action cannot be undone.</p>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={handleDeleteCancel}
+                  className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl hover:bg-gray-200 transition-colors duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={deletingMatchId !== null}
+                  className="flex-1 px-4 py-3 bg-red-500 text-white font-semibold rounded-xl hover:bg-red-600 disabled:bg-red-300 disabled:cursor-not-allowed transition-colors duration-200 flex items-center justify-center gap-2"
+                >
+                  {deletingMatchId === matchToDelete.id ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      🗑️ Delete Match
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

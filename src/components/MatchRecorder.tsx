@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Student, GameChoice } from '../types';
-import { addMatch } from '../services/firebaseService';
+import { addMatch, checkExistingMatch } from '../services/firebaseService';
 import StudentSearch from './StudentSearch';
 
 interface MatchRecorderProps {
@@ -14,6 +14,8 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
   const [player2Choice, setPlayer2Choice] = useState<GameChoice | ''>('');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [hasPlayedBefore, setHasPlayedBefore] = useState(false);
+  const [checkingMatch, setCheckingMatch] = useState(false);
 
   const choices: GameChoice[] = ['rock', 'paper', 'scissors'];
   
@@ -22,6 +24,33 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
     paper: '📄', 
     scissors: '✂️'
   };
+
+  // Check for existing match when both players are selected
+  useEffect(() => {
+    const checkForExistingMatch = async () => {
+      if (player1 && player2 && player1.id !== player2.id) {
+        setCheckingMatch(true);
+        try {
+          const exists = await checkExistingMatch(player1.id, player2.id);
+          setHasPlayedBefore(exists);
+          if (exists) {
+            setMessage(`⚠️ ${player1.name} and ${player2.name} have already played against each other.`);
+          } else {
+            setMessage('');
+          }
+        } catch (error) {
+          console.error('Error checking existing match:', error);
+        } finally {
+          setCheckingMatch(false);
+        }
+      } else {
+        setHasPlayedBefore(false);
+        setMessage('');
+      }
+    };
+
+    checkForExistingMatch();
+  }, [player1, player2]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +104,7 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
     setPlayer1Choice('');
     setPlayer2Choice('');
     setMessage('');
+    setHasPlayedBefore(false);
   };
 
   return (
@@ -103,7 +133,7 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
               
               <StudentSearch 
                 onStudentSelect={setPlayer1}
-                placeholder="🔍 Search for Player 1..."
+                placeholder="Search for Player 1..."
                 selectedStudent={player1}
               />
               
@@ -144,7 +174,7 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
               
               <StudentSearch 
                 onStudentSelect={setPlayer2}
-                placeholder="🔍 Search for Player 2..."
+                placeholder="Search for Player 2..."
                 selectedStudent={player2}
               />
               
@@ -179,13 +209,26 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
           <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t-2 border-gray-100">
             <button 
               type="submit" 
-              disabled={isLoading || !player1 || !player2 || !player1Choice || !player2Choice}
-              className="flex-1 px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-bold text-lg rounded-xl hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg hover:shadow-green-200 flex items-center justify-center gap-3"
+              disabled={isLoading || !player1 || !player2 || !player1Choice || !player2Choice || hasPlayedBefore || checkingMatch}
+              className={`flex-1 px-8 py-4 text-white font-bold text-lg rounded-xl disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center gap-3 ${
+                hasPlayedBefore 
+                  ? 'bg-gradient-to-r from-orange-400 to-red-500 hover:from-orange-500 hover:to-red-600 disabled:from-gray-300 disabled:to-gray-400' 
+                  : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 hover:shadow-green-200'
+              }`}
             >
               {isLoading ? (
                 <>
                   <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Recording Battle...
+                </>
+              ) : checkingMatch ? (
+                <>
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Checking...
+                </>
+              ) : hasPlayedBefore ? (
+                <>
+                  ⚠️ Already Played
                 </>
               ) : (
                 <>
@@ -208,10 +251,12 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
             <div className={`p-4 rounded-xl font-semibold text-base flex items-center gap-3 animate-slideIn ${
               message.includes('Error') 
                 ? 'text-red-700 bg-red-50 border-2 border-red-200' 
+                : message.includes('already played')
+                ? 'text-orange-700 bg-orange-50 border-2 border-orange-200'
                 : 'text-green-700 bg-green-50 border-2 border-green-200'
             }`}>
               <span className="text-xl">
-                {message.includes('Error') ? '❌' : '🎉'}
+                {message.includes('Error') ? '❌' : message.includes('already played') ? '⚠️' : '🎉'}
               </span>
               {message}
             </div>

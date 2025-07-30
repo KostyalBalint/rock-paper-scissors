@@ -15,7 +15,7 @@ function App() {
 
   const handleMatchRecorded = () => {
     setRefreshKey(prev => prev + 1)
-    setActiveTab('results')
+    // Stay on the current tab instead of redirecting to results
   }
 
   return (

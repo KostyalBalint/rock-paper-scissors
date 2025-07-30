@@ -2,9 +2,13 @@ import {
   collection, 
   addDoc, 
   getDocs, 
+  deleteDoc,
+  doc,
   query, 
   orderBy, 
   where,
+  and,
+  or,
   Timestamp,
   QueryDocumentSnapshot,
   type DocumentData,
@@ -63,6 +67,20 @@ const determineGameResult = (player1Choice: GameChoice, player2Choice: GameChoic
   }
 };
 
+export const checkExistingMatch = async (player1Id: string, player2Id: string): Promise<boolean> => {
+  // Check if these two players have already played against each other
+  const q = query(
+    matchesCollection,
+    or(
+      and(where('player1Id', '==', player1Id), where('player2Id', '==', player2Id)),
+      and(where('player1Id', '==', player2Id), where('player2Id', '==', player1Id))
+    )
+  );
+  
+  const querySnapshot = await getDocs(q);
+  return !querySnapshot.empty;
+};
+
 export const addMatch = async (
   player1Id: string,
   player1Name: string,
@@ -71,6 +89,12 @@ export const addMatch = async (
   player2Name: string,
   player2Choice: GameChoice
 ): Promise<string> => {
+  // Check if these players have already played against each other
+  const existingMatch = await checkExistingMatch(player1Id, player2Id);
+  if (existingMatch) {
+    throw new Error(`${player1Name} and ${player2Name} have already played against each other.`);
+  }
+  
   const gameResult = determineGameResult(player1Choice, player2Choice);
   
   const docRef = await addDoc(matchesCollection, {
@@ -86,6 +110,11 @@ export const addMatch = async (
   });
   
   return docRef.id;
+};
+
+export const deleteMatch = async (matchId: string): Promise<void> => {
+  const matchDoc = doc(matchesCollection, matchId);
+  await deleteDoc(matchDoc);
 };
 
 export const getMatches = async (): Promise<Match[]> => {
