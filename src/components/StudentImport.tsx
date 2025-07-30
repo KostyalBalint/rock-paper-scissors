@@ -44,28 +44,28 @@ const StudentImport: React.FC<StudentImportProps> = ({ onImportComplete }) => {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl shadow-xl p-6 sm:p-8">
-        <div className="text-center mb-6 sm:mb-8">
-          <div className="text-4xl sm:text-5xl mb-3">📥</div>
-          <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+      <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl shadow-xl p-4 sm:p-5">
+        <div className="text-center mb-4 sm:mb-5">
+          <div className="text-3xl sm:text-4xl mb-2">📥</div>
+          <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-1">
             Import Students
           </h2>
-          <p className="text-gray-600 text-sm sm:text-base">
-            Add students to your tournament by entering their names below
+          <p className="text-gray-600 text-sm">
+            Add students by entering their names below
           </p>
         </div>
         
-        <div className="space-y-6">
+        <div className="space-y-4">
           <div className="relative">
-            <label className="block text-sm font-semibold text-gray-700 mb-3">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
               Student Names (one per line)
             </label>
             <textarea
               value={studentText}
               onChange={(e) => setStudentText(e.target.value)}
               placeholder="John Doe&#10;Jane Smith&#10;Mike Johnson&#10;Sarah Williams&#10;..."
-              rows={8}
-              className="block p-2.5 w-full text-sm text-gray-900 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
+              rows={6}
+              className="block p-2 w-full text-sm text-gray-900 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
               disabled={isLoading}
             />
             <div className="absolute top-2 right-3 text-xs text-gray-400 font-medium">
@@ -73,11 +73,11 @@ const StudentImport: React.FC<StudentImportProps> = ({ onImportComplete }) => {
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             <button 
               onClick={handleImport} 
               disabled={isLoading || !studentText.trim()}
-              className="flex-1 px-6 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold text-base rounded-xl hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg hover:shadow-green-200 flex items-center justify-center gap-2"
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold text-sm rounded-xl hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg hover:shadow-green-200 flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -94,7 +94,7 @@ const StudentImport: React.FC<StudentImportProps> = ({ onImportComplete }) => {
               <button 
                 onClick={() => {setStudentText(''); setMessage('');}}
                 disabled={isLoading}
-                className="px-4 py-4 bg-gray-100 text-gray-600 font-semibold text-base rounded-xl hover:bg-gray-200 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95"
+                className="px-3 py-3 bg-gray-100 text-gray-600 font-semibold text-sm rounded-xl hover:bg-gray-200 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95"
               >
                 🗑️ Clear
               </button>
@@ -102,7 +102,7 @@ const StudentImport: React.FC<StudentImportProps> = ({ onImportComplete }) => {
           </div>
           
           {message && (
-            <div className={`p-4 rounded-xl font-semibold text-sm sm:text-base flex items-center gap-3 animate-slideIn ${
+            <div className={`p-3 rounded-xl font-semibold text-sm flex items-center gap-2 animate-slideIn ${
               message.includes('Error') 
                 ? 'text-red-700 bg-red-50 border-2 border-red-200' 
                 : 'text-green-700 bg-green-50 border-2 border-green-200'

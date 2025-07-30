@@ -109,26 +109,26 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
 
   return (
     <div className="max-w-5xl mx-auto">
-      <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl shadow-xl p-6 sm:p-8">
-        <div className="text-center mb-8 sm:mb-10">
-          <div className="text-4xl sm:text-5xl mb-3">⚔️</div>
-          <h2 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
+      <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl shadow-xl p-4 sm:p-6">
+        <div className="text-center mb-5 sm:mb-6">
+          <div className="text-3xl sm:text-4xl mb-2">⚔️</div>
+          <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-1">
             Record Match
           </h2>
-          <p className="text-gray-600 text-sm sm:text-base">
+          <p className="text-gray-600 text-sm">
             Choose two players and their moves to record the battle
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
             {/* Player 1 */}
-            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border-2 border-blue-100">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 rounded-2xl border-2 border-blue-100">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                   1
                 </div>
-                <h3 className="text-xl font-bold text-blue-800">Player 1</h3>
+                <h3 className="text-lg font-bold text-blue-800">Player 1</h3>
               </div>
               
               <StudentSearch 
@@ -138,24 +138,24 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
               />
               
               {player1 && (
-                <div className="mt-6">
-                  <label className="block text-sm font-bold text-blue-700 mb-3">
+                <div className="mt-4">
+                  <label className="block text-sm font-bold text-blue-700 mb-2">
                     Choose Player 1's Move:
                   </label>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-3 gap-2">
                     {choices.map(choice => (
                       <button
                         key={choice}
                         type="button"
-                        className={`p-4 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95 flex flex-col items-center gap-2 ${
+                        className={`p-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95 flex flex-col items-center gap-1 ${
                           player1Choice === choice 
                             ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 border-2 border-blue-600' 
                             : 'bg-white text-blue-700 border-2 border-blue-200 hover:bg-blue-50 hover:border-blue-300'
                         }`}
                         onClick={() => setPlayer1Choice(choice)}
                       >
-                        <span className="text-2xl">{choiceEmojis[choice]}</span>
-                        <span className="text-sm capitalize">{choice}</span>
+                        <span className="text-xl">{choiceEmojis[choice]}</span>
+                        <span className="text-xs capitalize">{choice}</span>
                       </button>
                     ))}
                   </div>
@@ -164,12 +164,12 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
             </div>
 
             {/* Player 2 */}
-            <div className="bg-gradient-to-br from-red-50 to-pink-50 p-6 rounded-2xl border-2 border-red-100">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+            <div className="bg-gradient-to-br from-red-50 to-pink-50 p-4 rounded-2xl border-2 border-red-100">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                   2
                 </div>
-                <h3 className="text-xl font-bold text-red-800">Player 2</h3>
+                <h3 className="text-lg font-bold text-red-800">Player 2</h3>
               </div>
               
               <StudentSearch 
@@ -179,24 +179,24 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
               />
               
               {player2 && (
-                <div className="mt-6">
-                  <label className="block text-sm font-bold text-red-700 mb-3">
+                <div className="mt-4">
+                  <label className="block text-sm font-bold text-red-700 mb-2">
                     Choose Player 2's Move:
                   </label>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-3 gap-2">
                     {choices.map(choice => (
                       <button
                         key={choice}
                         type="button"
-                        className={`p-4 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95 flex flex-col items-center gap-2 ${
+                        className={`p-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95 flex flex-col items-center gap-1 ${
                           player2Choice === choice 
                             ? 'bg-red-500 text-white shadow-lg shadow-red-200 border-2 border-red-600' 
                             : 'bg-white text-red-700 border-2 border-red-200 hover:bg-red-50 hover:border-red-300'
                         }`}
                         onClick={() => setPlayer2Choice(choice)}
                       >
-                        <span className="text-2xl">{choiceEmojis[choice]}</span>
-                        <span className="text-sm capitalize">{choice}</span>
+                        <span className="text-xl">{choiceEmojis[choice]}</span>
+                        <span className="text-xs capitalize">{choice}</span>
                       </button>
                     ))}
                   </div>
@@ -206,11 +206,11 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t-2 border-gray-100">
+          <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t-2 border-gray-100">
             <button 
               type="submit" 
               disabled={isLoading || !player1 || !player2 || !player1Choice || !player2Choice || hasPlayedBefore || checkingMatch}
-              className={`flex-1 px-8 py-4 text-white font-bold text-lg rounded-xl disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center gap-3 ${
+              className={`flex-1 px-6 py-3 text-white font-bold text-base rounded-xl disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center gap-2 ${
                 hasPlayedBefore 
                   ? 'bg-gradient-to-r from-orange-400 to-red-500 hover:from-orange-500 hover:to-red-600 disabled:from-gray-300 disabled:to-gray-400' 
                   : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-400 hover:shadow-green-200'
@@ -241,14 +241,14 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
               type="button" 
               onClick={reset} 
               disabled={isLoading}
-              className="px-6 py-4 bg-gray-100 text-gray-600 font-semibold text-lg rounded-xl hover:bg-gray-200 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
+              className="px-4 py-3 bg-gray-100 text-gray-600 font-semibold text-base rounded-xl hover:bg-gray-200 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105 active:scale-95 flex items-center justify-center gap-2"
             >
               🔄 Reset
             </button>
           </div>
 
           {message && (
-            <div className={`p-4 rounded-xl font-semibold text-base flex items-center gap-3 animate-slideIn ${
+            <div className={`p-3 rounded-xl font-semibold text-sm flex items-center gap-2 animate-slideIn ${
               message.includes('Error') 
                 ? 'text-red-700 bg-red-50 border-2 border-red-200' 
                 : message.includes('already played')
