@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Student } from '../types';
-import { searchActiveStudents, getActiveStudents } from '../services/firebaseService';
+import { getStudentsWithMatchCounts } from '../services/firebaseService';
 
 interface StudentSearchProps {
   onStudentSelect: (student: Student) => void;
@@ -14,8 +14,8 @@ const StudentSearch: React.FC<StudentSearchProps> = ({
   selectedStudent 
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [students, setStudents] = useState<Student[]>([]);
-  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
+  const [students, setStudents] = useState<(Student & { matchCount: number })[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<(Student & { matchCount: number })[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -32,8 +32,8 @@ const StudentSearch: React.FC<StudentSearchProps> = ({
   const loadStudents = async () => {
     setIsLoading(true);
     try {
-      const activeStudents = await getActiveStudents();
-      setStudents(activeStudents);
+      const activeStudentsWithCounts = await getStudentsWithMatchCounts();
+      setStudents(activeStudentsWithCounts);
     } catch (error) {
       console.error('Error loading students:', error);
     } finally {
@@ -50,12 +50,12 @@ const StudentSearch: React.FC<StudentSearchProps> = ({
       return;
     }
 
-    try {
-      const results = await searchActiveStudents(value);
-      setFilteredStudents(results.slice(0, 10));
-    } catch (error) {
-      console.error('Error searching students:', error);
-    }
+    // Filter from loaded students with match counts
+    const filtered = students.filter(student => 
+      student.name.toLowerCase().includes(value.toLowerCase())
+    ).slice(0, 10);
+    
+    setFilteredStudents(filtered);
   };
 
   const handleStudentSelect = (student: Student) => {
@@ -101,13 +101,21 @@ const StudentSearch: React.FC<StudentSearchProps> = ({
             {filteredStudents.map((student, index) => (
               <div 
                 key={student.id} 
-                className={`px-4 py-3 cursor-pointer border-b border-gray-100 hover:bg-blue-50 transition-colors duration-150 flex items-center gap-3 ${
+                className={`px-4 py-3 cursor-pointer border-b border-gray-100 hover:bg-blue-50 transition-colors duration-150 flex items-center justify-between ${
                   index === 0 ? 'bg-blue-25' : ''
                 } last:border-b-0 last:rounded-b-xl`}
                 onClick={() => handleStudentSelect(student)}
               >
-                <span className="text-blue-500">👤</span>
-                <span className="font-medium text-gray-800">{student.name}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-blue-500">👤</span>
+                  <span className="font-medium text-gray-800">{student.name}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-500">⚔️</span>
+                  <span className="text-sm font-semibold text-gray-600 bg-gray-100 px-2 py-1 rounded-full">
+                    {student.matchCount}
+                  </span>
+                </div>
               </div>
             ))}
           </div>

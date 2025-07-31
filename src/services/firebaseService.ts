@@ -239,3 +239,23 @@ export const getStudentMatches = async (studentId: string): Promise<Match[]> => 
   
   return [...matches1, ...matches2].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 };
+
+export const getStudentMatchCount = async (studentId: string): Promise<number> => {
+  const q1 = query(matchesCollection, where('player1Id', '==', studentId));
+  const q2 = query(matchesCollection, where('player2Id', '==', studentId));
+  
+  const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+  
+  return snapshot1.docs.length + snapshot2.docs.length;
+};
+
+export const getStudentsWithMatchCounts = async (): Promise<(Student & { matchCount: number })[]> => {
+  const students = await getActiveStudents();
+  const studentsWithCounts = await Promise.all(
+    students.map(async (student) => ({
+      ...student,
+      matchCount: await getStudentMatchCount(student.id)
+    }))
+  );
+  return studentsWithCounts;
+};

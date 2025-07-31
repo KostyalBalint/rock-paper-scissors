@@ -96,7 +96,7 @@ function App() {
               }`}
               onClick={() => setActiveTab('flowchart')}
             >
-              📊 Flow Chart
+              🏆 Tournament Bracket
             </button>
           </nav>
         </header>

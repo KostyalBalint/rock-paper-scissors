@@ -38,7 +38,7 @@ const MatchFlowChart: React.FC = () => {
       ]);
       setMatches(allMatches);
       setStudents(allStudents);
-      generateEliminationTree(allMatches, allStudents);
+      generateTournamentBracket(allMatches, allStudents);
     } catch (err) {
       setError('Error loading data: ' + (err as Error).message);
     } finally {
@@ -46,77 +46,168 @@ const MatchFlowChart: React.FC = () => {
     }
   };
 
-  const generateEliminationTree = useCallback((matchData: Match[], studentData: Student[]) => {
+  const generateTournamentBracket = useCallback((matchData: Match[], studentData: Student[]) => {
     if (studentData.length === 0) {
       setNodes([]);
       setEdges([]);
       return;
     }
 
-    // Sort matches by creation date to understand elimination order
+    // Sort matches by creation date to understand match order
     const sortedMatches = [...matchData].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
     
-    // Build elimination structure
-    const eliminationRounds: { [round: number]: Student[] } = {};
-    const eliminationOrder: { [studentId: string]: number } = {};
+    // Build student match mapping
     const studentMatchMap: { [studentId: string]: Match[] } = {};
-    
-    // Initialize student match mapping
     studentData.forEach(student => {
       studentMatchMap[student.id] = matchData.filter(
         match => match.player1Id === student.id || match.player2Id === student.id
       );
     });
     
-    let currentRound = 0;
+    const bracketNodes: Node[] = [];
+    const bracketEdges: Edge[] = [];
     
-    // Process matches in chronological order to determine elimination rounds
-    sortedMatches.forEach((match) => {
+    // Create match nodes positioned in bracket format
+    const chartWidth = 1200;
+    const chartHeight = 700;
+    const matchHeight = 80;
+    const roundSpacing = 250;
+    
+    // Calculate total rounds needed (estimate based on matches)
+    const totalMatches = sortedMatches.length;
+    const roundsEstimate = Math.ceil(Math.log2(studentData.length));
+    
+    sortedMatches.forEach((match, index) => {
       const isPlayer1Winner = match.winner === match.player1Name;
       const isTie = match.result === 'tie';
       
-      if (!isTie) {
-        const loserId = isPlayer1Winner ? match.player2Id : match.player1Id;
-        const loser = studentData.find(s => s.id === loserId);
-        
-        if (loser && !eliminationOrder.hasOwnProperty(loserId)) {
-          eliminationOrder[loserId] = currentRound;
-          if (!eliminationRounds[currentRound]) {
-            eliminationRounds[currentRound] = [];
-          }
-          eliminationRounds[currentRound].push(loser);
-          currentRound++;
-        }
-      }
+      // Position matches in chronological order, creating a flowing bracket
+      const roundIndex = Math.floor(index / Math.max(1, Math.ceil(totalMatches / roundsEstimate)));
+      const positionInRound = index % Math.max(1, Math.ceil(totalMatches / roundsEstimate));
+      const matchesInRound = Math.ceil(totalMatches / roundsEstimate);
+      
+      const x = 100 + (roundIndex * roundSpacing);
+      const y = 100 + (positionInRound * (matchHeight + 40)) + ((chartHeight - (matchesInRound * (matchHeight + 40))) / 2);
+      
+      // Create match node
+      bracketNodes.push({
+        id: `match-${match.id}`,
+        type: 'default',
+        position: { x, y },
+        data: {
+          label: (
+            <div className="text-center bg-white border-2 border-gray-300 rounded-lg p-3 shadow-lg">
+              <div className="text-xs font-bold text-gray-700 mb-2">
+                Match {index + 1}
+              </div>
+              <div className="space-y-1">
+                <div className={`text-sm font-semibold flex items-center justify-between px-2 py-1 rounded ${
+                  isPlayer1Winner ? 'bg-green-100 text-green-800' : isTie ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  <span>{match.player1Name}</span>
+                  <span>{match.player1Choice === 'rock' ? '🪨' : match.player1Choice === 'paper' ? '📄' : '✂️'}</span>
+                  {isPlayer1Winner && !isTie && <span className="ml-1">👑</span>}
+                </div>
+                <div className="text-xs text-gray-500 font-bold">VS</div>
+                <div className={`text-sm font-semibold flex items-center justify-between px-2 py-1 rounded ${
+                  !isPlayer1Winner && !isTie ? 'bg-green-100 text-green-800' : isTie ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                }`}>
+                  <span>{match.player2Name}</span>
+                  <span>{match.player2Choice === 'rock' ? '🪨' : match.player2Choice === 'paper' ? '📄' : '✂️'}</span>
+                  {!isPlayer1Winner && !isTie && <span className="ml-1">👑</span>}
+                </div>
+              </div>
+              {isTie && (
+                <div className="text-xs font-bold text-yellow-600 mt-1">
+                  TIE GAME
+                </div>
+              )}
+            </div>
+          ),
+        },
+        style: {
+          background: 'transparent',
+          border: 'none',
+          padding: 0,
+          minWidth: '180px',
+          minHeight: `${matchHeight}px`,
+        },
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+      });
     });
     
-    // Survivors (students not eliminated)
-    const survivors = studentData.filter(s => !eliminationOrder.hasOwnProperty(s.id));
+    // Create player nodes for eliminated and active students
+    const eliminatedStudents = studentData.filter(s => s.eliminated);
+    const activeStudents = studentData.filter(s => !s.eliminated);
     
-    // Create nodes positioned by elimination round
-    const studentNodes: Node[] = [];
-    const chartWidth = 1200;
-    const chartHeight = 700;
-    const roundHeight = chartHeight / Math.max(currentRound + 3, 5);
-    
-    // Position survivors at the top
-    survivors.forEach((student, index) => {
+    // Position eliminated students on the left side
+    eliminatedStudents.forEach((student, index) => {
       const wins = studentMatchMap[student.id]?.filter(match => match.winner === student.name).length || 0;
       const losses = studentMatchMap[student.id]?.filter(match => match.winner && match.winner !== student.name).length || 0;
       const ties = studentMatchMap[student.id]?.filter(match => match.result === 'tie').length || 0;
       
-      studentNodes.push({
-        id: student.id,
+      bracketNodes.push({
+        id: `eliminated-${student.id}`,
         type: 'default',
         position: {
-          x: (chartWidth / (survivors.length + 1)) * (index + 1) - 60,
-          y: roundHeight * 0.5
+          x: 20,
+          y: 50 + (index * 100)
+        },
+        data: {
+          label: (
+            <div className="text-center">
+              <div className="font-bold text-sm text-gray-500 line-through mb-1">
+                {student.name} ❌
+              </div>
+              <div className="text-xs text-gray-600">
+                <span className="text-green-600">W: {wins}</span>
+                {' • '}
+                <span className="text-red-600">L: {losses}</span>
+                {ties > 0 && (
+                  <>
+                    {' • '}
+                    <span className="text-yellow-600">T: {ties}</span>
+                  </>
+                )}
+              </div>
+              <div className="text-xs text-red-600 font-semibold mt-1">
+                ELIMINATED
+              </div>
+            </div>
+          ),
+        },
+        style: {
+          background: '#f3f4f6',
+          border: '2px dashed #9ca3af',
+          borderRadius: '12px',
+          padding: '8px 12px',
+          minWidth: '120px',
+          opacity: 0.7,
+        },
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+      });
+    });
+    
+    // Position active/winner students on the right side
+    activeStudents.forEach((student, index) => {
+      const wins = studentMatchMap[student.id]?.filter(match => match.winner === student.name).length || 0;
+      const losses = studentMatchMap[student.id]?.filter(match => match.winner && match.winner !== student.name).length || 0;
+      const ties = studentMatchMap[student.id]?.filter(match => match.result === 'tie').length || 0;
+      
+      bracketNodes.push({
+        id: `active-${student.id}`,
+        type: 'default',
+        position: {
+          x: chartWidth - 150,
+          y: 150 + (index * 120)
         },
         data: {
           label: (
             <div className="text-center">
               <div className="font-bold text-sm text-green-800 mb-1">
-                {student.name} 👑
+                {student.name} {activeStudents.length === 1 ? '👑' : '🔥'}
               </div>
               <div className="text-xs text-gray-600">
                 <span className="text-green-600">W: {wins}</span>
@@ -130,173 +221,71 @@ const MatchFlowChart: React.FC = () => {
                 )}
               </div>
               <div className="text-xs text-green-600 font-semibold mt-1">
-                SURVIVOR
+                {activeStudents.length === 1 ? 'CHAMPION' : 'ACTIVE'}
               </div>
             </div>
           ),
         },
         style: {
-          background: '#dcfce7',
-          border: '3px solid #16a34a',
+          background: activeStudents.length === 1 ? '#fef3c7' : '#dcfce7',
+          border: activeStudents.length === 1 ? '3px solid #f59e0b' : '3px solid #16a34a',
           borderRadius: '12px',
           padding: '8px 12px',
-          minWidth: '140px',
-          boxShadow: '0 4px 12px rgba(34, 197, 94, 0.3)'
+          minWidth: '130px',
+          boxShadow: activeStudents.length === 1 ? '0 4px 12px rgba(245, 158, 11, 0.3)' : '0 4px 12px rgba(34, 197, 94, 0.3)'
         },
-        sourcePosition: Position.Bottom,
-        targetPosition: Position.Top,
+        sourcePosition: Position.Left,
+        targetPosition: Position.Right,
       });
     });
     
-    // Position eliminated students by round
-    Object.entries(eliminationRounds).forEach(([roundStr, roundStudents]) => {
-      const round = parseInt(roundStr);
-      
-      roundStudents.forEach((student, index) => {
-        const wins = studentMatchMap[student.id]?.filter(match => match.winner === student.name).length || 0;
-        const losses = studentMatchMap[student.id]?.filter(match => match.winner && match.winner !== student.name).length || 0;
-        const ties = studentMatchMap[student.id]?.filter(match => match.result === 'tie').length || 0;
-        
-        // Find the match that eliminated this student
-        const eliminatingMatch = sortedMatches.find(match => {
-          const isPlayer1Winner = match.winner === match.player1Name;
-          const loserId = isPlayer1Winner ? match.player2Id : match.player1Id;
-          return loserId === student.id && match.result !== 'tie';
-        });
-        
-        studentNodes.push({
-          id: student.id,
-          type: 'default',
-          position: {
-            x: (chartWidth / (roundStudents.length + 1)) * (index + 1) - 60,
-            y: roundHeight * (round + 2)
-          },
-          data: {
-            label: (
-              <div className="text-center">
-                <div className="font-bold text-sm text-gray-500 line-through mb-1">
-                  {student.name} ❌
-                </div>
-                <div className="text-xs text-gray-600">
-                  <span className="text-green-600">W: {wins}</span>
-                  {' • '}
-                  <span className="text-red-600">L: {losses}</span>
-                  {ties > 0 && (
-                    <>
-                      {' • '}
-                      <span className="text-yellow-600">T: {ties}</span>
-                    </>
-                  )}
-                </div>
-                <div className="text-xs text-red-600 font-semibold mt-1">
-                  ROUND {round + 1}
-                </div>
-                {eliminatingMatch && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    Lost to: {eliminatingMatch.winner}
-                  </div>
-                )}
-              </div>
-            ),
-          },
-          style: {
-            background: '#f3f4f6',
-            border: '2px dashed #9ca3af',
-            borderRadius: '12px',
-            padding: '8px 12px',
-            minWidth: '140px',
-            opacity: 0.7,
-          },
-          sourcePosition: Position.Bottom,
-          targetPosition: Position.Top,
-        });
-      });
-    });
-    
-    // Create elimination flow edges
-    const eliminationEdges: Edge[] = [];
-    
-    sortedMatches.forEach((match, index) => {
+    // Create connecting edges showing the bracket flow
+    sortedMatches.forEach((match) => {
       const isPlayer1Winner = match.winner === match.player1Name;
       const isTie = match.result === 'tie';
       
       if (!isTie) {
-        const loserId = isPlayer1Winner ? match.player2Id : match.player1Id;
         const winnerId = isPlayer1Winner ? match.player1Id : match.player2Id;
+        const loserId = isPlayer1Winner ? match.player2Id : match.player1Id;
         
-        eliminationEdges.push({
-          id: `elimination-${index}`,
-          source: loserId,
-          target: winnerId,
-          type: 'straight',
-          animated: true,
-          style: {
-            stroke: '#dc2626',
-            strokeWidth: 3,
-            strokeDasharray: '8,4',
-          },
-          markerEnd: {
-            type: 'arrowclosed',
-            color: '#dc2626',
-            width: 20,
-            height: 20,
-          },
-          label: (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-2 py-1 text-xs font-bold shadow-sm">
-              <div className="flex items-center gap-1">
-                <span>{match.player1Choice === 'rock' ? '🪨' : match.player1Choice === 'paper' ? '📄' : '✂️'}</span>
-                <span className="text-gray-400">vs</span>
-                <span>{match.player2Choice === 'rock' ? '🪨' : match.player2Choice === 'paper' ? '📄' : '✂️'}</span>
-              </div>
-              <div className="text-center text-red-600 text-xs">
-                Eliminated
-              </div>
-            </div>
-          ),
-          labelStyle: {
-            fill: 'transparent',
-          },
-          labelBgStyle: {
-            fill: 'transparent',
-          },
-        });
-      } else {
-        // Show tie matches as neutral connections
-        eliminationEdges.push({
-          id: `tie-${index}`,
-          source: match.player1Id,
-          target: match.player2Id,
-          type: 'default',
+        // Connect eliminated player to match
+        bracketEdges.push({
+          id: `to-match-${match.id}-${loserId}`,
+          source: `eliminated-${loserId}`,
+          target: `match-${match.id}`,
+          type: 'smoothstep',
           animated: false,
           style: {
-            stroke: '#ca8a04',
+            stroke: '#ef4444',
             strokeWidth: 2,
-            strokeDasharray: '4,4',
-          },
-          label: (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-2 py-1 text-xs font-semibold shadow-sm">
-              <div className="flex items-center gap-1">
-                <span>{match.player1Choice === 'rock' ? '🪨' : match.player1Choice === 'paper' ? '📄' : '✂️'}</span>
-                <span className="text-gray-400">vs</span>
-                <span>{match.player2Choice === 'rock' ? '🪨' : match.player2Choice === 'paper' ? '📄' : '✂️'}</span>
-              </div>
-              <div className="text-center text-yellow-600 text-xs">
-                Tie
-              </div>
-            </div>
-          ),
-          labelStyle: {
-            fill: 'transparent',
-          },
-          labelBgStyle: {
-            fill: 'transparent',
+            strokeDasharray: '5,5',
           },
         });
+        
+        // Connect match to winner (if winner is still active)
+        const winnerNode = studentData.find(s => s.id === winnerId);
+        if (winnerNode && !winnerNode.eliminated) {
+          bracketEdges.push({
+            id: `from-match-${match.id}-${winnerId}`,
+            source: `match-${match.id}`,
+            target: `active-${winnerId}`,
+            type: 'smoothstep',
+            animated: true,
+            style: {
+              stroke: '#22c55e',
+              strokeWidth: 3,
+            },
+            markerEnd: {
+              type: 'arrowclosed' as any,
+              color: '#22c55e',
+            },
+          });
+        }
       }
     });
 
-    setNodes(studentNodes as any);
-    setEdges(eliminationEdges as any);
+    setNodes(bracketNodes as any);
+    setEdges(bracketEdges as any);
   }, [setNodes, setEdges]);
 
   if (isLoading) {
@@ -331,10 +320,10 @@ const MatchFlowChart: React.FC = () => {
         <div className="text-center mb-5">
           <div className="text-3xl sm:text-4xl mb-2">🏆</div>
           <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent mb-1">
-            Tournament Elimination Tree
+            Tournament Bracket
           </h2>
           <p className="text-gray-600 text-sm mb-4">
-            Visual progression of student eliminations in tournament order
+            Interactive bracket showing match progression and results
           </p>
           
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
@@ -345,7 +334,7 @@ const MatchFlowChart: React.FC = () => {
               onClick={loadData}
               className="px-4 py-2 bg-gradient-to-r from-red-500 to-orange-500 text-white font-semibold text-sm rounded-xl hover:from-red-600 hover:to-orange-600 transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-red-200 flex items-center gap-2"
             >
-              🔄 Refresh Tree
+              🔄 Refresh Bracket
             </button>
           </div>
         </div>
@@ -354,13 +343,13 @@ const MatchFlowChart: React.FC = () => {
           <div className="text-center py-10">
             <div className="text-4xl mb-3">👥</div>
             <div className="text-lg font-semibold text-gray-600 mb-1">No students imported yet!</div>
-            <div className="text-gray-500 text-sm">Import students first to see the elimination tree</div>
+            <div className="text-gray-500 text-sm">Import students first to see the tournament bracket</div>
           </div>
         ) : matches.length === 0 ? (
           <div className="text-center py-10">
             <div className="text-4xl mb-3">🎯</div>
             <div className="text-lg font-semibold text-gray-600 mb-1">No matches recorded yet!</div>
-            <div className="text-gray-500 text-sm">Record some matches to see the elimination progression</div>
+            <div className="text-gray-500 text-sm">Record some matches to see the tournament bracket</div>
           </div>
         ) : (
           <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
@@ -420,19 +409,19 @@ const MatchFlowChart: React.FC = () => {
             <div className="text-sm text-gray-600 mb-2">
               <span className="inline-flex items-center gap-1 mx-2">
                 <div className="w-3 h-3 bg-green-200 border-2 border-green-500 rounded"></div>
-                Survivors (Top)
+                Active Players (Right)
               </span>
               <span className="inline-flex items-center gap-1 mx-2">
                 <div className="w-3 h-3 bg-gray-200 border-2 border-dashed border-gray-400 rounded opacity-70"></div>
-                Eliminated (By Round)
+                Eliminated Players (Left)
               </span>
               <span className="inline-flex items-center gap-1 mx-2">
-                <div className="w-4 h-0 border-t-2 border-red-600 border-dashed"></div>
-                Elimination Flow
+                <div className="w-3 h-3 bg-white border-2 border-gray-300 rounded"></div>
+                Match Results (Center)
               </span>
             </div>
             <div className="text-xs text-gray-500">
-              📈 Tree shows elimination progression - survivors at top, eliminated students grouped by elimination round
+              🏆 Bracket shows match flow - eliminated players on left, matches in center, active players on right
             </div>
           </div>
         )}
