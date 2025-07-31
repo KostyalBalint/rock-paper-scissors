@@ -10,6 +10,7 @@ import {
   where,
   and,
   or,
+  onSnapshot,
   Timestamp,
   QueryDocumentSnapshot,
   type DocumentData,
@@ -258,4 +259,40 @@ export const getStudentsWithMatchCounts = async (): Promise<(Student & { matchCo
     }))
   );
   return studentsWithCounts;
+};
+
+export const subscribeToStudentsWithMatchCounts = (
+  callback: (students: (Student & { matchCount: number })[]) => void
+) => {
+  // Listen to students collection changes
+  const studentsUnsubscribe = onSnapshot(
+    query(studentsCollection, orderBy('name')),
+    async () => {
+      try {
+        const studentsWithCounts = await getStudentsWithMatchCounts();
+        callback(studentsWithCounts);
+      } catch (error) {
+        console.error('Error in students subscription:', error);
+      }
+    }
+  );
+
+  // Listen to matches collection changes
+  const matchesUnsubscribe = onSnapshot(
+    query(matchesCollection, orderBy('createdAt', 'desc')),
+    async () => {
+      try {
+        const studentsWithCounts = await getStudentsWithMatchCounts();
+        callback(studentsWithCounts);
+      } catch (error) {
+        console.error('Error in matches subscription:', error);
+      }
+    }
+  );
+
+  // Return combined unsubscribe function
+  return () => {
+    studentsUnsubscribe();
+    matchesUnsubscribe();
+  };
 };

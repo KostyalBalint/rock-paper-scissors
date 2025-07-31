@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { Student } from '../types';
-import { getStudentsWithMatchCounts } from '../services/firebaseService';
+import { subscribeToStudentsWithMatchCounts } from '../services/firebaseService';
 
 interface StudentSearchProps {
   onStudentSelect: (student: Student) => void;
@@ -11,35 +11,29 @@ interface StudentSearchProps {
 const StudentSearch: React.FC<StudentSearchProps> = ({ 
   onStudentSelect, 
   placeholder = "Search for a student...",
-  selectedStudent 
+  selectedStudent
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [students, setStudents] = useState<(Student & { matchCount: number })[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<(Student & { matchCount: number })[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadStudents();
-  }, []);
+    const unsubscribe = subscribeToStudentsWithMatchCounts((studentsWithCounts) => {
+      setStudents(studentsWithCounts);
+      setIsLoading(false);
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, [isLoading]);
 
   useEffect(() => {
     if (selectedStudent) {
       setSearchTerm(selectedStudent.name);
     }
   }, [selectedStudent]);
-
-  const loadStudents = async () => {
-    setIsLoading(true);
-    try {
-      const activeStudentsWithCounts = await getStudentsWithMatchCounts();
-      setStudents(activeStudentsWithCounts);
-    } catch (error) {
-      console.error('Error loading students:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleSearchChange = async (value: string) => {
     setSearchTerm(value);
