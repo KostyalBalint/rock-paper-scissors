@@ -2,6 +2,7 @@ import {
   collection, 
   addDoc, 
   getDocs, 
+  getDoc,
   deleteDoc,
   doc,
   updateDoc,
@@ -71,6 +72,14 @@ export const eliminateStudent = async (studentId: string): Promise<void> => {
   await updateDoc(studentDoc, {
     eliminated: true,
     eliminatedAt: Timestamp.now()
+  });
+};
+
+export const reactivateStudent = async (studentId: string): Promise<void> => {
+  const studentDoc = doc(studentsCollection, studentId);
+  await updateDoc(studentDoc, {
+    eliminated: false,
+    eliminatedAt: null
   });
 };
 
@@ -235,7 +244,34 @@ export const addMatchWithWinner = async (
 };
 
 export const deleteMatch = async (matchId: string): Promise<void> => {
+  // First get the match details to find who was eliminated
   const matchDoc = doc(matchesCollection, matchId);
+  const matchSnapshot = await getDoc(matchDoc);
+  
+  if (matchSnapshot.exists()) {
+    const matchData = matchSnapshot.data() as Match;
+    
+    // Determine who was eliminated (the loser)
+    let eliminatedPlayerId: string | undefined;
+    
+    if (matchData.result !== 'tie' && matchData.winner) {
+      // For new format matches or old format matches with winner
+      if (matchData.matchResult) {
+        // New format: use matchResult field
+        eliminatedPlayerId = matchData.matchResult === 'player1' ? matchData.player2Id : matchData.player1Id;
+      } else {
+        // Old format: use winner field
+        eliminatedPlayerId = matchData.winner === matchData.player1Name ? matchData.player2Id : matchData.player1Id;
+      }
+      
+      // Reactivate the eliminated player
+      if (eliminatedPlayerId) {
+        await reactivateStudent(eliminatedPlayerId);
+      }
+    }
+  }
+  
+  // Delete the match
   await deleteDoc(matchDoc);
 };
 
