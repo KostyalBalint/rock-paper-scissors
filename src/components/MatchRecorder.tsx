@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import type { Student, GameChoice } from '../types';
-import { addMatch, checkExistingMatch } from '../services/firebaseService';
+import type { Student, MatchResult } from '../types';
+import { addMatchWithWinner, checkExistingMatch } from '../services/firebaseService';
 import StudentSearch from './StudentSearch';
 
 interface MatchRecorderProps {
@@ -10,20 +10,11 @@ interface MatchRecorderProps {
 const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
   const [player1, setPlayer1] = useState<Student | null>(null);
   const [player2, setPlayer2] = useState<Student | null>(null);
-  const [player1Choice, setPlayer1Choice] = useState<GameChoice | ''>('');
-  const [player2Choice, setPlayer2Choice] = useState<GameChoice | ''>('');
+  const [matchResult, setMatchResult] = useState<MatchResult | ''>('');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [hasPlayedBefore, setHasPlayedBefore] = useState(false);
   const [checkingMatch, setCheckingMatch] = useState(false);
-
-  const choices: GameChoice[] = ['rock', 'paper', 'scissors'];
-  
-  const choiceEmojis = {
-    rock: '🪨',
-    paper: '📄', 
-    scissors: '✂️'
-  };
 
   // Check for existing match when both players are selected
   useEffect(() => {
@@ -65,8 +56,8 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
       return;
     }
     
-    if (!player1Choice || !player2Choice) {
-      setMessage('Please select choices for both players');
+    if (!matchResult) {
+      setMessage('Please select the match result');
       return;
     }
 
@@ -74,21 +65,19 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
     setMessage('');
 
     try {
-      await addMatch(
+      await addMatchWithWinner(
         player1.id,
         player1.name,
-        player1Choice as GameChoice,
         player2.id,
         player2.name,
-        player2Choice as GameChoice
+        matchResult as MatchResult
       );
       
       setMessage('Match recorded successfully!');
       
       setPlayer1(null);
       setPlayer2(null);
-      setPlayer1Choice('');
-      setPlayer2Choice('');
+      setMatchResult('');
       
       onMatchRecorded();
     } catch (error) {
@@ -101,8 +90,7 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
   const reset = () => {
     setPlayer1(null);
     setPlayer2(null);
-    setPlayer1Choice('');
-    setPlayer2Choice('');
+    setMatchResult('');
     setMessage('');
     setHasPlayedBefore(false);
   };
@@ -116,7 +104,7 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
             Record Match
           </h2>
           <p className="text-gray-600 text-sm">
-            Choose two players and their moves to record the battle
+            Choose two players and select the match winner
           </p>
         </div>
 
@@ -136,31 +124,6 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
                 placeholder="Search for Player 1..."
                 selectedStudent={player1}
               />
-              
-              {player1 && (
-                <div className="mt-4">
-                  <label className="block text-sm font-bold text-blue-700 mb-2">
-                    Choose Player 1's Move:
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {choices.map(choice => (
-                      <button
-                        key={choice}
-                        type="button"
-                        className={`p-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95 flex flex-col items-center gap-1 ${
-                          player1Choice === choice 
-                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 border-2 border-blue-600' 
-                            : 'bg-white text-blue-700 border-2 border-blue-200 hover:bg-blue-50 hover:border-blue-300'
-                        }`}
-                        onClick={() => setPlayer1Choice(choice)}
-                      >
-                        <span className="text-xl">{choiceEmojis[choice]}</span>
-                        <span className="text-xs capitalize">{choice}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Player 2 */}
@@ -177,39 +140,59 @@ const MatchRecorder: React.FC<MatchRecorderProps> = ({ onMatchRecorded }) => {
                 placeholder="Search for Player 2..."
                 selectedStudent={player2}
               />
-              
-              {player2 && (
-                <div className="mt-4">
-                  <label className="block text-sm font-bold text-red-700 mb-2">
-                    Choose Player 2's Move:
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {choices.map(choice => (
-                      <button
-                        key={choice}
-                        type="button"
-                        className={`p-3 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95 flex flex-col items-center gap-1 ${
-                          player2Choice === choice 
-                            ? 'bg-red-500 text-white shadow-lg shadow-red-200 border-2 border-red-600' 
-                            : 'bg-white text-red-700 border-2 border-red-200 hover:bg-red-50 hover:border-red-300'
-                        }`}
-                        onClick={() => setPlayer2Choice(choice)}
-                      >
-                        <span className="text-xl">{choiceEmojis[choice]}</span>
-                        <span className="text-xs capitalize">{choice}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           </div>
+
+          {/* Winner Selection */}
+          {player1 && player2 && (
+            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 p-6 rounded-2xl border-2 border-purple-100">
+              <div className="text-center mb-4">
+                <div className="text-2xl mb-2">🏆</div>
+                <h3 className="text-xl font-bold text-purple-800 mb-2">Select Match Result</h3>
+                <p className="text-sm text-purple-600">Who won the match between {player1.name} and {player2.name}?</p>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-6">
+                <button
+                  type="button"
+                  className={`p-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95 flex flex-col items-center gap-3 ${
+                    matchResult === 'player1' 
+                      ? 'bg-blue-500 text-white shadow-lg shadow-blue-200 border-2 border-blue-600' 
+                      : 'bg-white text-blue-700 border-2 border-blue-200 hover:bg-blue-50 hover:border-blue-300'
+                  }`}
+                  onClick={() => setMatchResult('player1')}
+                >
+                  <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    1
+                  </div>
+                  <span className="text-base font-bold">{player1.name}</span>
+                  <span className="text-sm">Wins</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={`p-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 active:scale-95 flex flex-col items-center gap-3 ${
+                    matchResult === 'player2' 
+                      ? 'bg-red-500 text-white shadow-lg shadow-red-200 border-2 border-red-600' 
+                      : 'bg-white text-red-700 border-2 border-red-200 hover:bg-red-50 hover:border-red-300'
+                  }`}
+                  onClick={() => setMatchResult('player2')}
+                >
+                  <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                    2
+                  </div>
+                  <span className="text-base font-bold">{player2.name}</span>
+                  <span className="text-sm">Wins</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t-2 border-gray-100">
             <button 
               type="submit" 
-              disabled={isLoading || !player1 || !player2 || !player1Choice || !player2Choice || hasPlayedBefore || checkingMatch}
+              disabled={isLoading || !player1 || !player2 || !matchResult || hasPlayedBefore || checkingMatch}
               className={`flex-1 px-6 py-3 text-white font-bold text-base rounded-xl disabled:cursor-not-allowed transform transition-all duration-200 hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center gap-2 ${
                 hasPlayedBefore 
                   ? 'bg-gradient-to-r from-orange-400 to-red-500 hover:from-orange-500 hover:to-red-600 disabled:from-gray-300 disabled:to-gray-400' 

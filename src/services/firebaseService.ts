@@ -16,7 +16,7 @@ import {
   type DocumentData,
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import type {Student, Match, GameChoice, GameResult} from '../types';
+import type {Student, Match, GameChoice, GameResult, MatchResult} from '../types';
 
 export const studentsCollection = collection(db, 'students');
 export const matchesCollection = collection(db, 'matches');
@@ -179,6 +179,56 @@ export const addMatch = async (
     } else {
       await eliminateStudent(player1Id);
     }
+  }
+  
+  return docRef.id;
+};
+
+export const addMatchWithWinner = async (
+  player1Id: string,
+  player1Name: string,
+  player2Id: string,
+  player2Name: string,
+  matchResult: MatchResult
+): Promise<string> => {
+  // Check if these players have already played against each other
+  const existingMatch = await checkExistingMatch(player1Id, player2Id);
+  if (existingMatch) {
+    throw new Error(`${player1Name} and ${player2Name} have already played against each other.`);
+  }
+  
+  // Check if either player is already eliminated
+  const students = await getStudents();
+  const player1 = students.find(s => s.id === player1Id);
+  const player2 = students.find(s => s.id === player2Id);
+  
+  if (player1?.eliminated) {
+    throw new Error(`${player1Name} has already been eliminated from the tournament.`);
+  }
+  if (player2?.eliminated) {
+    throw new Error(`${player2Name} has already been eliminated from the tournament.`);
+  }
+  
+  // Determine winner and result based on matchResult
+  const result: GameResult = 'win';
+  const winner = matchResult === 'player1' ? player1Name : player2Name;
+  
+  const docRef = await addDoc(matchesCollection, {
+    player1Id,
+    player1Name,
+    player2Id,
+    player2Name,
+    result,
+    matchResult,
+    winner,
+    createdAt: Timestamp.now()
+  });
+  
+  // Eliminate the loser
+  if (matchResult === 'player1') {
+    await eliminateStudent(player2Id);
+  } else {
+    await eliminateStudent(player1Id);
   }
   
   return docRef.id;

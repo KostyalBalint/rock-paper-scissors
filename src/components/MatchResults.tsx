@@ -202,7 +202,7 @@ const MatchResults: React.FC = () => {
                       {match.player1Name}
                       {match.winner === match.player2Name && ' (Eliminated)'}
                     </div>
-                    <div className="text-2xl mb-1">{choiceEmojis[match.player1Choice]}</div>
+                    <div className="text-2xl mb-1">{match.player1Choice ? choiceEmojis[match.player1Choice] : '🏁'}</div>
                     <div className={`font-bold capitalize px-2 py-1 rounded-full text-xs ${
                       match.winner === match.player1Name 
                         ? 'text-green-800 bg-green-200' 
@@ -210,7 +210,7 @@ const MatchResults: React.FC = () => {
                         ? 'text-red-800 bg-red-200' 
                         : 'text-blue-800 bg-blue-200'
                     }`}>
-                      {match.player1Choice}
+                      {match.player1Choice || 'Winner'}
                     </div>
                   </div>
                   
@@ -240,7 +240,7 @@ const MatchResults: React.FC = () => {
                       {match.player2Name}
                       {match.winner === match.player1Name && ' (Eliminated)'}
                     </div>
-                    <div className="text-2xl mb-1">{choiceEmojis[match.player2Choice]}</div>
+                    <div className="text-2xl mb-1">{match.player2Choice ? choiceEmojis[match.player2Choice] : '🏁'}</div>
                     <div className={`font-bold capitalize px-2 py-1 rounded-full text-xs ${
                       match.winner === match.player2Name 
                         ? 'text-green-800 bg-green-200' 
@@ -248,7 +248,7 @@ const MatchResults: React.FC = () => {
                         ? 'text-red-800 bg-red-200' 
                         : 'text-red-800 bg-red-200'
                     }`}>
-                      {match.player2Choice}
+                      {match.player2Choice || 'Winner'}
                     </div>
                   </div>
                 </div>

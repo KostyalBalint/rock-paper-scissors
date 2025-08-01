@@ -105,7 +105,7 @@ const MatchFlowChart: React.FC = () => {
                   isPlayer1Winner ? 'bg-green-100 text-green-800' : isTie ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                 }`}>
                   <span>{match.player1Name}</span>
-                  <span>{match.player1Choice === 'rock' ? '🪨' : match.player1Choice === 'paper' ? '📄' : '✂️'}</span>
+                  {match.player1Choice && <span>{match.player1Choice === 'rock' ? '🪨' : match.player1Choice === 'paper' ? '📄' : '✂️'}</span>}
                   {isPlayer1Winner && !isTie && <span className="ml-1">👑</span>}
                 </div>
                 <div className="text-xs text-gray-500 font-bold">VS</div>
@@ -113,7 +113,7 @@ const MatchFlowChart: React.FC = () => {
                   !isPlayer1Winner && !isTie ? 'bg-green-100 text-green-800' : isTie ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                 }`}>
                   <span>{match.player2Name}</span>
-                  <span>{match.player2Choice === 'rock' ? '🪨' : match.player2Choice === 'paper' ? '📄' : '✂️'}</span>
+                  {match.player2Choice && <span>{match.player2Choice === 'rock' ? '🪨' : match.player2Choice === 'paper' ? '📄' : '✂️'}</span>}
                   {!isPlayer1Winner && !isTie && <span className="ml-1">👑</span>}
                 </div>
               </div>
