@@ -347,6 +347,17 @@ export const getStudentsWithMatchCounts = async (): Promise<(Student & { matchCo
   return studentsWithCounts;
 };
 
+export const getAllStudentsWithMatchCounts = async (): Promise<(Student & { matchCount: number })[]> => {
+  const students = await getStudents(); // Get ALL students, not just active ones
+  const studentsWithCounts = await Promise.all(
+    students.map(async (student) => ({
+      ...student,
+      matchCount: await getStudentMatchCount(student.id)
+    }))
+  );
+  return studentsWithCounts;
+};
+
 export const subscribeToStudentsWithMatchCounts = (
   callback: (students: (Student & { matchCount: number })[]) => void
 ) => {
@@ -372,6 +383,42 @@ export const subscribeToStudentsWithMatchCounts = (
         callback(studentsWithCounts);
       } catch (error) {
         console.error('Error in matches subscription:', error);
+      }
+    }
+  );
+
+  // Return combined unsubscribe function
+  return () => {
+    studentsUnsubscribe();
+    matchesUnsubscribe();
+  };
+};
+
+export const subscribeToAllStudentsWithMatchCounts = (
+  callback: (students: (Student & { matchCount: number })[]) => void
+) => {
+  // Listen to students collection changes
+  const studentsUnsubscribe = onSnapshot(
+    query(studentsCollection, orderBy('name')),
+    async () => {
+      try {
+        const studentsWithCounts = await getAllStudentsWithMatchCounts();
+        callback(studentsWithCounts);
+      } catch (error) {
+        console.error('Error in all students subscription:', error);
+      }
+    }
+  );
+
+  // Listen to matches collection changes
+  const matchesUnsubscribe = onSnapshot(
+    query(matchesCollection, orderBy('createdAt', 'desc')),
+    async () => {
+      try {
+        const studentsWithCounts = await getAllStudentsWithMatchCounts();
+        callback(studentsWithCounts);
+      } catch (error) {
+        console.error('Error in matches subscription for all students:', error);
       }
     }
   );
