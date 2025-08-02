@@ -53,233 +53,234 @@ const MatchFlowChart: React.FC = () => {
       return;
     }
 
-    // Sort matches by creation date to understand match order
-    const sortedMatches = [...matchData].sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
-    
-    // Build student match mapping
+    // Build student match mapping to calculate wins for each student
     const studentMatchMap: { [studentId: string]: Match[] } = {};
+    const studentWins: { [studentId: string]: number } = {};
+    
     studentData.forEach(student => {
       studentMatchMap[student.id] = matchData.filter(
         match => match.player1Id === student.id || match.player2Id === student.id
       );
+      studentWins[student.id] = matchData.filter(
+        match => match.winner === student.name
+      ).length;
+    });
+    
+    // Group students by number of wins (columns)
+    const columnsByWins: { [wins: number]: Student[] } = {};
+    const maxWins = Math.max(...Object.values(studentWins), 0);
+    
+    studentData.forEach(student => {
+      const wins = studentWins[student.id];
+      if (!columnsByWins[wins]) {
+        columnsByWins[wins] = [];
+      }
+      columnsByWins[wins].push(student);
     });
     
     const bracketNodes: Node[] = [];
     const bracketEdges: Edge[] = [];
     
-    // Create match nodes positioned in bracket format
-    const chartWidth = 1200;
     const chartHeight = 700;
-    const matchHeight = 80;
-    const roundSpacing = 250;
+    const columnSpacing = 200;
+    const playerHeight = 150;
+    const playerSpacing = 40;
     
-    // Calculate total rounds needed (estimate based on matches)
-    const totalMatches = sortedMatches.length;
-    const roundsEstimate = Math.ceil(Math.log2(studentData.length));
+    // Sort players within each column to group opponents together
+    const sortPlayersInColumn = (players: Student[], matchData: Match[]) => {
+      // Create adjacency map of who played against whom
+      const opponentMap: { [studentId: string]: string[] } = {};
+      players.forEach(player => {
+        opponentMap[player.id] = [];
+      });
+      
+      matchData.forEach(match => {
+        if (opponentMap[match.player1Id] !== undefined && opponentMap[match.player2Id] !== undefined) {
+          opponentMap[match.player1Id].push(match.player2Id);
+          opponentMap[match.player2Id].push(match.player1Id);
+        }
+      });
+      
+      // Sort players to minimize visual distance between opponents
+      const sorted = [...players];
+      const placed: Set<string> = new Set();
+      const result: Student[] = [];
+      
+      // Start with the player who has the most connections in this column
+      let currentPlayer = sorted.reduce((best, player) => {
+        const connections = opponentMap[player.id].filter(oppId => 
+          sorted.some(p => p.id === oppId)
+        ).length;
+        const bestConnections = opponentMap[best.id].filter(oppId => 
+          sorted.some(p => p.id === oppId)
+        ).length;
+        return connections > bestConnections ? player : best;
+      });
+      
+      while (result.length < sorted.length) {
+        if (!placed.has(currentPlayer.id)) {
+          result.push(currentPlayer);
+          placed.add(currentPlayer.id);
+        }
+        
+        // Find the next player who is an opponent of current player and not yet placed
+        const nextOpponent = sorted.find(player => 
+          !placed.has(player.id) && 
+          opponentMap[currentPlayer.id].includes(player.id)
+        );
+        
+        if (nextOpponent) {
+          currentPlayer = nextOpponent;
+        } else {
+          // If no more opponents, pick the next unplaced player with most connections
+          const remaining = sorted.filter(player => !placed.has(player.id));
+          if (remaining.length > 0) {
+            currentPlayer = remaining.reduce((best, player) => {
+              const connections = opponentMap[player.id].filter(oppId => 
+                !placed.has(oppId) && sorted.some(p => p.id === oppId)
+              ).length;
+              const bestConnections = opponentMap[best.id].filter(oppId => 
+                !placed.has(oppId) && sorted.some(p => p.id === oppId)
+              ).length;
+              return connections > bestConnections ? player : best;
+            });
+          }
+        }
+      }
+      
+      return result;
+    };
+
+    // Create nodes for each column of players
+    for (let wins = 0; wins <= maxWins; wins++) {
+      const playersInColumn = columnsByWins[wins] || [];
+      
+      if (playersInColumn.length === 0) continue;
+      
+      // Sort players to group opponents together
+      const sortedPlayers = sortPlayersInColumn(playersInColumn, matchData);
+      
+      const columnX = 100 + (wins * columnSpacing);
+      const columnHeight = sortedPlayers.length * (playerHeight + playerSpacing);
+      const startY = (chartHeight - columnHeight) / 2 + 50;
+      
+      sortedPlayers.forEach((student, index) => {
+        const y = startY + (index * (playerHeight + playerSpacing));
+        const losses = studentMatchMap[student.id]?.filter(match => 
+          match.winner && match.winner !== student.name
+        ).length || 0;
+        const ties = studentMatchMap[student.id]?.filter(match => 
+          match.result === 'tie'
+        ).length || 0;
+        
+        // Determine if this is the final winner
+        const isChampion = wins === maxWins && !student.eliminated;
+        
+        bracketNodes.push({
+          id: `player-${student.id}`,
+          type: 'default',
+          position: { x: columnX, y },
+          data: {
+            label: (
+              <div className="text-center">
+                <div className={`font-bold text-sm mb-2 ${
+                  student.eliminated 
+                    ? 'text-gray-500 line-through' 
+                    : isChampion 
+                    ? 'text-yellow-700' 
+                    : 'text-gray-800'
+                }`}>
+                  {student.name}
+                  {student.eliminated && ' ❌'}
+                  {isChampion && ' 👑'}
+                </div>
+                <div className="text-xs text-gray-600 mb-2">
+                  <span className="text-green-600 font-semibold">W: {wins}</span>
+                  {' • '}
+                  <span className="text-red-600">L: {losses}</span>
+                  {ties > 0 && (
+                    <>
+                      {' • '}
+                      <span className="text-yellow-600">T: {ties}</span>
+                    </>
+                  )}
+                </div>
+                <div className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                  student.eliminated 
+                    ? 'bg-red-100 text-red-700' 
+                    : isChampion 
+                    ? 'bg-yellow-100 text-yellow-700' 
+                    : 'bg-green-100 text-green-700'
+                }`}>
+                  {student.eliminated ? 'ELIMINATED' : isChampion ? 'CHAMPION' : 'ACTIVE'}
+                </div>
+              </div>
+            ),
+          },
+          style: {
+            background: student.eliminated 
+              ? '#f3f4f6' 
+              : isChampion 
+              ? '#fef3c7' 
+              : '#dcfce7',
+            border: student.eliminated 
+              ? '2px dashed #9ca3af' 
+              : isChampion 
+              ? '3px solid #f59e0b' 
+              : '2px solid #16a34a',
+            borderRadius: '12px',
+            padding: '12px 16px',
+            minWidth: '140px',
+            minHeight: `${playerHeight}px`,
+            opacity: student.eliminated ? 0.7 : 1,
+            boxShadow: isChampion 
+              ? '0 4px 12px rgba(245, 158, 11, 0.3)' 
+              : student.eliminated 
+              ? 'none' 
+              : '0 2px 8px rgba(34, 197, 94, 0.2)',
+          },
+          sourcePosition: Position.Right,
+          targetPosition: Position.Left,
+        });
+      });
+    }
     
-    sortedMatches.forEach((match, index) => {
+    // Create edges showing match relationships
+    matchData.forEach((match) => {
       const isPlayer1Winner = match.winner === match.player1Name;
       const isTie = match.result === 'tie';
       
-      // Position matches in chronological order, creating a flowing bracket
-      const roundIndex = Math.floor(index / Math.max(1, Math.ceil(totalMatches / roundsEstimate)));
-      const positionInRound = index % Math.max(1, Math.ceil(totalMatches / roundsEstimate));
-      const matchesInRound = Math.ceil(totalMatches / roundsEstimate);
-      
-      const x = 100 + (roundIndex * roundSpacing);
-      const y = 100 + (positionInRound * (matchHeight + 40)) + ((chartHeight - (matchesInRound * (matchHeight + 40))) / 2);
-      
-      // Create match node
-      bracketNodes.push({
-        id: `match-${match.id}`,
-        type: 'default',
-        position: { x, y },
-        data: {
-          label: (
-            <div className="text-center bg-white border-2 border-gray-300 rounded-lg p-3 shadow-lg">
-              <div className="text-xs font-bold text-gray-700 mb-2">
-                Match {index + 1}
-              </div>
-              <div className="space-y-1">
-                <div className={`text-sm font-semibold flex items-center justify-between px-2 py-1 rounded ${
-                  isPlayer1Winner ? 'bg-green-100 text-green-800' : isTie ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  <span>{match.player1Name}</span>
-                  {match.player1Choice && <span>{match.player1Choice === 'rock' ? '🪨' : match.player1Choice === 'paper' ? '📄' : '✂️'}</span>}
-                  {isPlayer1Winner && !isTie && <span className="ml-1">👑</span>}
-                </div>
-                <div className="text-xs text-gray-500 font-bold">VS</div>
-                <div className={`text-sm font-semibold flex items-center justify-between px-2 py-1 rounded ${
-                  !isPlayer1Winner && !isTie ? 'bg-green-100 text-green-800' : isTie ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
-                }`}>
-                  <span>{match.player2Name}</span>
-                  {match.player2Choice && <span>{match.player2Choice === 'rock' ? '🪨' : match.player2Choice === 'paper' ? '📄' : '✂️'}</span>}
-                  {!isPlayer1Winner && !isTie && <span className="ml-1">👑</span>}
-                </div>
-              </div>
-              {isTie && (
-                <div className="text-xs font-bold text-yellow-600 mt-1">
-                  TIE GAME
-                </div>
-              )}
-            </div>
-          ),
-        },
-        style: {
-          background: 'transparent',
-          border: 'none',
-          padding: 0,
-          minWidth: '180px',
-          minHeight: `${matchHeight}px`,
-        },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
-      });
-    });
-    
-    // Create player nodes for eliminated and active students
-    const eliminatedStudents = studentData.filter(s => s.eliminated);
-    const activeStudents = studentData.filter(s => !s.eliminated);
-    
-    // Position eliminated students on the left side
-    eliminatedStudents.forEach((student, index) => {
-      const wins = studentMatchMap[student.id]?.filter(match => match.winner === student.name).length || 0;
-      const losses = studentMatchMap[student.id]?.filter(match => match.winner && match.winner !== student.name).length || 0;
-      const ties = studentMatchMap[student.id]?.filter(match => match.result === 'tie').length || 0;
-      
-      bracketNodes.push({
-        id: `eliminated-${student.id}`,
-        type: 'default',
-        position: {
-          x: 20,
-          y: 50 + (index * 100)
-        },
-        data: {
-          label: (
-            <div className="text-center">
-              <div className="font-bold text-sm text-gray-500 line-through mb-1">
-                {student.name} ❌
-              </div>
-              <div className="text-xs text-gray-600">
-                <span className="text-green-600">W: {wins}</span>
-                {' • '}
-                <span className="text-red-600">L: {losses}</span>
-                {ties > 0 && (
-                  <>
-                    {' • '}
-                    <span className="text-yellow-600">T: {ties}</span>
-                  </>
-                )}
-              </div>
-              <div className="text-xs text-red-600 font-semibold mt-1">
-                ELIMINATED
-              </div>
-            </div>
-          ),
-        },
-        style: {
-          background: '#f3f4f6',
-          border: '2px dashed #9ca3af',
-          borderRadius: '12px',
-          padding: '8px 12px',
-          minWidth: '120px',
-          opacity: 0.7,
-        },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
-      });
-    });
-    
-    // Position active/winner students on the right side
-    activeStudents.forEach((student, index) => {
-      const wins = studentMatchMap[student.id]?.filter(match => match.winner === student.name).length || 0;
-      const losses = studentMatchMap[student.id]?.filter(match => match.winner && match.winner !== student.name).length || 0;
-      const ties = studentMatchMap[student.id]?.filter(match => match.result === 'tie').length || 0;
-      
-      bracketNodes.push({
-        id: `active-${student.id}`,
-        type: 'default',
-        position: {
-          x: chartWidth - 150,
-          y: 150 + (index * 120)
-        },
-        data: {
-          label: (
-            <div className="text-center">
-              <div className="font-bold text-sm text-green-800 mb-1">
-                {student.name} {activeStudents.length === 1 ? '👑' : '🔥'}
-              </div>
-              <div className="text-xs text-gray-600">
-                <span className="text-green-600">W: {wins}</span>
-                {' • '}
-                <span className="text-red-600">L: {losses}</span>
-                {ties > 0 && (
-                  <>
-                    {' • '}
-                    <span className="text-yellow-600">T: {ties}</span>
-                  </>
-                )}
-              </div>
-              <div className="text-xs text-green-600 font-semibold mt-1">
-                {activeStudents.length === 1 ? 'CHAMPION' : 'ACTIVE'}
-              </div>
-            </div>
-          ),
-        },
-        style: {
-          background: activeStudents.length === 1 ? '#fef3c7' : '#dcfce7',
-          border: activeStudents.length === 1 ? '3px solid #f59e0b' : '3px solid #16a34a',
-          borderRadius: '12px',
-          padding: '8px 12px',
-          minWidth: '130px',
-          boxShadow: activeStudents.length === 1 ? '0 4px 12px rgba(245, 158, 11, 0.3)' : '0 4px 12px rgba(34, 197, 94, 0.3)'
-        },
-        sourcePosition: Position.Left,
-        targetPosition: Position.Right,
-      });
-    });
-    
-    // Create connecting edges showing the bracket flow
-    sortedMatches.forEach((match) => {
-      const isPlayer1Winner = match.winner === match.player1Name;
-      const isTie = match.result === 'tie';
-      
-      if (!isTie) {
+      if (!isTie && match.winner) {
         const winnerId = isPlayer1Winner ? match.player1Id : match.player2Id;
         const loserId = isPlayer1Winner ? match.player2Id : match.player1Id;
         
-        // Connect eliminated player to match
-        bracketEdges.push({
-          id: `to-match-${match.id}-${loserId}`,
-          source: `eliminated-${loserId}`,
-          target: `match-${match.id}`,
-          type: 'smoothstep',
-          animated: false,
-          style: {
-            stroke: '#ef4444',
-            strokeWidth: 2,
-            strokeDasharray: '5,5',
-          },
-        });
+        // Find the winner and loser nodes
+        const winnerStudent = studentData.find(s => s.id === winnerId);
+        const loserStudent = studentData.find(s => s.id === loserId);
         
-        // Connect match to winner (if winner is still active)
-        const winnerNode = studentData.find(s => s.id === winnerId);
-        if (winnerNode && !winnerNode.eliminated) {
-          bracketEdges.push({
-            id: `from-match-${match.id}-${winnerId}`,
-            source: `match-${match.id}`,
-            target: `active-${winnerId}`,
-            type: 'smoothstep',
-            animated: true,
-            style: {
-              stroke: '#22c55e',
-              strokeWidth: 3,
-            },
-            markerEnd: {
-              type: 'arrowclosed' as any,
-              color: '#22c55e',
-            },
-          });
+        if (winnerStudent && loserStudent) {
+          const winnerWins = studentWins[winnerId];
+          const loserWins = studentWins[loserId];
+          
+          // Only create edge if winner has more wins than loser (showing progression)
+          if (winnerWins > loserWins) {
+            bracketEdges.push({
+              id: `match-${match.id}-progression`,
+              source: `player-${loserId}`,
+              target: `player-${winnerId}`,
+              type: 'smoothstep',
+              animated: true,
+              style: {
+                stroke: '#22c55e',
+                strokeWidth: 3,
+              },
+              markerEnd: {
+                type: 'arrowclosed' as any,
+                color: '#22c55e',
+              },
+              label: `Beat ${loserStudent.name}`,
+            });
+          }
         }
       }
     });
@@ -409,19 +410,19 @@ const MatchFlowChart: React.FC = () => {
             <div className="text-sm text-gray-600 mb-2">
               <span className="inline-flex items-center gap-1 mx-2">
                 <div className="w-3 h-3 bg-green-200 border-2 border-green-500 rounded"></div>
-                Active Players (Right)
+                Active Players
               </span>
               <span className="inline-flex items-center gap-1 mx-2">
                 <div className="w-3 h-3 bg-gray-200 border-2 border-dashed border-gray-400 rounded opacity-70"></div>
-                Eliminated Players (Left)
+                Eliminated Players
               </span>
               <span className="inline-flex items-center gap-1 mx-2">
-                <div className="w-3 h-3 bg-white border-2 border-gray-300 rounded"></div>
-                Match Results (Center)
+                <div className="w-3 h-3 bg-yellow-200 border-2 border-yellow-500 rounded"></div>
+                Champion
               </span>
             </div>
             <div className="text-xs text-gray-500">
-              🏆 Bracket shows match flow - eliminated players on left, matches in center, active players on right
+              🏆 Players organized by wins - arrows show progression from defeated players to winners
             </div>
           </div>
         )}
