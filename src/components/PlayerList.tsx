@@ -105,7 +105,7 @@ const PlayerList: React.FC = () => {
             <div className="bg-gradient-to-br from-purple-50 to-violet-50 p-4 rounded-xl border-2 border-purple-100">
               <div className="text-2xl font-bold text-purple-700">{participationPercentage.toFixed(1)}%</div>
               <div className="text-sm text-purple-600 font-semibold">Tournament Participation</div>
-              <div className="text-xs text-purple-500 mt-1">({studentsWithMultipleMatches.length}/{students.length} with 2+ matches)</div>
+              <div className="text-xs text-purple-500 mt-1">({studentsWithMultipleMatches.length}/{students.length} with 1+ matches)</div>
             </div>
           </div>
 
