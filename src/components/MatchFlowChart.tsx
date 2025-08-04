@@ -82,9 +82,7 @@ const MatchFlowChart: React.FC = () => {
     const bracketEdges: Edge[] = [];
     
     const chartHeight = 700;
-    const columnSpacing = 200;
     const playerHeight = 150;
-    const playerSpacing = 40;
     
     // Sort players within each column to group opponents together
     const sortPlayersInColumn = (players: Student[], matchData: Match[]) => {
@@ -151,7 +149,12 @@ const MatchFlowChart: React.FC = () => {
       return result;
     };
 
-    // Create nodes for each column of players
+    // Create nodes arranged in concentric circles
+    const centerX = chartHeight / 2 + 200; // Center of the circle layout
+    const centerY = chartHeight / 2;
+    const baseRadius = 1500; // Starting radius for outermost circle
+    const radiusStep = 200; // Distance between each circle
+    
     for (let wins = 0; wins <= maxWins; wins++) {
       const playersInColumn = columnsByWins[wins] || [];
       
@@ -160,12 +163,17 @@ const MatchFlowChart: React.FC = () => {
       // Sort players to group opponents together
       const sortedPlayers = sortPlayersInColumn(playersInColumn, matchData);
       
-      const columnX = 100 + (wins * columnSpacing);
-      const columnHeight = sortedPlayers.length * (playerHeight + playerSpacing);
-      const startY = (chartHeight - columnHeight) / 2 + 50;
+      // Calculate circle parameters for this win level
+      // Outermost circle (0 wins) has largest radius, innermost (max wins) has smallest
+      const circleRadius = baseRadius + ((maxWins - wins) * radiusStep);
+      const angleStep = (2 * Math.PI) / sortedPlayers.length;
+      const startAngle = -Math.PI / 2; // Start at top
       
       sortedPlayers.forEach((student, index) => {
-        const y = startY + (index * (playerHeight + playerSpacing));
+        // Calculate position on the circle
+        const angle = startAngle + (index * angleStep);
+        const x = centerX + circleRadius * Math.cos(angle);
+        const y = centerY + circleRadius * Math.sin(angle);
         const losses = studentMatchMap[student.id]?.filter(match => 
           match.winner && match.winner !== student.name
         ).length || 0;
@@ -179,7 +187,7 @@ const MatchFlowChart: React.FC = () => {
         bracketNodes.push({
           id: `player-${student.id}`,
           type: 'default',
-          position: { x: columnX, y },
+          position: { x, y },
           data: {
             label: (
               <div className="text-center">
@@ -422,7 +430,7 @@ const MatchFlowChart: React.FC = () => {
               </span>
             </div>
             <div className="text-xs text-gray-500">
-              🏆 Players organized by wins - arrows show progression from defeated players to winners
+              🏆 Players arranged in concentric circles by wins - outer circles have fewer wins, inner circles have more wins
             </div>
           </div>
         )}
